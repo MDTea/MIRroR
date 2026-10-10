@@ -50,10 +50,11 @@ async function readFileStore(): Promise<Thread[]> {
   try {
     const raw = await readFile(filePath(), "utf8");
     const parsed = JSON.parse(raw) as { threads?: Thread[] };
-    for (const thread of parsed.threads ?? []) byId.set(thread.id, thread);
+    for (const thread of parsed.threads ?? []) {
+      if (thread?.id) byId.set(thread.id, thread);
+    }
   } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code;
-    if (code !== "ENOENT" && code !== "EACCES" && code !== "EROFS" && code !== "EPERM") throw error;
+    console.error("Could not read saved chats:", error instanceof Error ? error.message : error);
   }
   for (const thread of memory.values()) byId.set(thread.id, thread);
   return [...byId.values()];
@@ -66,9 +67,7 @@ async function writeFileStore(threads: Thread[]) {
     await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, JSON.stringify({ threads }, null, 2), "utf8");
   } catch (error) {
-    const code = (error as NodeJS.ErrnoException).code;
-    if (code === "EACCES" || code === "EROFS" || code === "EPERM") return;
-    throw error;
+    console.error("Could not write saved chats:", error instanceof Error ? error.message : error);
   }
 }
 
@@ -91,49 +90,62 @@ async function writeSupabase(client: SupabaseClient, thread: Thread) {
   if (error) throw new Error(error.message);
 }
 
+async function readAll(): Promise<Thread[]> {
+  const client = database();
+  if (client) {
+    try {
+      const remote = await readSupabase(client);
+      for (const thread of remote) memory.set(thread.id, thread);
+    } catch (error) {
+      console.error("Could not read hosted chats:", error instanceof Error ? error.message : error);
+    }
+  }
+  return readFileStore();
+}
+
+async function keep(thread: Thread) {
+  memory.set(thread.id, thread);
+  const client = database();
+  if (client) {
+    try {
+      await writeSupabase(client, thread);
+      return;
+    } catch (error) {
+      console.error("Could not save the hosted chat:", error instanceof Error ? error.message : error);
+    }
+  }
+  const threads = await readFileStore();
+  const index = threads.findIndex((item) => item.id === thread.id);
+  if (index < 0) threads.push(thread);
+  else threads[index] = thread;
+  await writeFileStore(threads);
+}
+
 export function listThreads() {
   return withLock(async () => {
-    const client = database();
-    const threads = client ? await readSupabase(client) : await readFileStore();
+    const threads = await readAll();
     return threads.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   });
 }
 
 export function getThread(id: string) {
   return withLock(async () => {
-    const client = database();
-    const threads = client ? await readSupabase(client) : await readFileStore();
+    const threads = await readAll();
     return threads.find((thread) => thread.id === id) ?? null;
   });
 }
 
 export function createThread(thread: Thread) {
   return withLock(async () => {
-    const client = database();
-    if (client) {
-      await writeSupabase(client, thread);
-      return thread;
-    }
-    const threads = await readFileStore();
-    threads.push(thread);
-    await writeFileStore(threads);
+    await keep(thread);
     return thread;
   });
 }
 
 export function saveThread(thread: Thread) {
   return withLock(async () => {
-    const client = database();
     thread.updatedAt = new Date().toISOString();
-    if (client) {
-      await writeSupabase(client, thread);
-      return thread;
-    }
-    const threads = await readFileStore();
-    const index = threads.findIndex((item) => item.id === thread.id);
-    if (index < 0) threads.push(thread);
-    else threads[index] = thread;
-    await writeFileStore(threads);
+    await keep(thread);
     return thread;
   });
 }

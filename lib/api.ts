@@ -5,5 +5,6 @@ export function fail(error: unknown) {
     return Response.json({ error: error.message }, { status: error.status });
   }
   console.error(error);
-  return Response.json({ error: "The rehearsal hit a snag. Try that line again." }, { status: 500 });
+  const detail = error instanceof Error && error.message ? error.message : "Try that line again.";
+  return Response.json({ error: `The rehearsal hit a snag. ${detail}`.slice(0, 240) }, { status: 500 });
 }

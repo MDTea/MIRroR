@@ -107,7 +107,12 @@ export async function openShowing(slug: string) {
     createdAt: now(),
     updatedAt: now(),
   };
-  return persistThread(thread);
+  try {
+    return await persistThread(thread);
+  } catch (error) {
+    console.error("Could not store the new chat:", error instanceof Error ? error.message : error);
+    return thread;
+  }
 }
 
 export async function speak(threadId: string, text: string, mode: "talk" | "mirror" | "repair", snapshot?: unknown) {
