@@ -87,8 +87,8 @@ export function ChatApp() {
       setThread(null);
       setError("");
     };
-    window.addEventListener("mirriam-home", home);
-    return () => window.removeEventListener("mirriam-home", home);
+    window.addEventListener("mirror-home", home);
+    return () => window.removeEventListener("mirror-home", home);
   }, []);
 
   const firstAt = thread?.messages.find((message) => message.role === "user")?.at ?? null;
@@ -335,7 +335,7 @@ export function ChatApp() {
             ))}
             {offerFeedback ? (
               <div className="bubble-in mr-auto max-w-[85%]">
-                <p className="px-2 text-[0.65rem] uppercase tracking-[0.14em] text-stage-foreground/60">MIRRIAM</p>
+                <p className="px-2 text-[0.65rem] uppercase tracking-[0.14em] text-stage-foreground/60">MIRROR</p>
                 <div className="mt-1 rounded-3xl rounded-bl-md border border-white/15 bg-white/10 px-4 py-3 text-stage-foreground">
                   <p>
                     {thread.stalled
@@ -349,7 +349,7 @@ export function ChatApp() {
                 </div>
               </div>
             ) : null}
-            {busy ? <Typing name={reviewing ? "MIRRIAM is reviewing your responses" : mirror ? "You, from the other chair" : scene.character.name} /> : null}
+            {busy ? <Typing name={reviewing ? "MIRROR is reviewing your responses" : mirror ? "You, from the other chair" : scene.character.name} /> : null}
           </>
         )}
       </div>

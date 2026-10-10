@@ -50,7 +50,7 @@ export function HallBoard() {
             Practice being human.
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-8 text-foreground/80">
-            MIRRIAM is a social simulator for conversations that do not automatically go your way.
+            MIRROR is a social simulator for conversations that do not automatically go your way.
             Someone across from you has a goal, a boundary, and a memory. You can sit in their chair.
             If it goes badly, you can come back and repair it.
           </p>

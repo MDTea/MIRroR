@@ -19,8 +19,8 @@ const sans = Outfit({
 
 export const metadata: Metadata = {
   title: {
-    default: "MIRRIAM — Practice being human",
-    template: "%s · MIRRIAM",
+    default: "MIRROR — Practice being human",
+    template: "%s · MIRROR",
   },
   description:
     "A social simulator where you practice difficult conversations, hear your own words from the other chair, and come back to repair what went wrong.",

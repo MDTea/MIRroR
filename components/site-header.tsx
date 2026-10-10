@@ -12,7 +12,7 @@ export function SiteHeader() {
           aria-label="Home"
           className="inline-flex items-center rounded-full px-2 py-1 font-display text-3xl tracking-tight text-foreground hover:bg-secondary"
           onClick={() => {
-            window.dispatchEvent(new Event("mirriam-home"));
+            window.dispatchEvent(new Event("mirror-home"));
           }}
         >
           <Wordmark />
