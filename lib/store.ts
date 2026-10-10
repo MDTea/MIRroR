@@ -5,7 +5,21 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import type { Thread } from "@/lib/types";
 
-const filePath = path.join(process.cwd(), "data", "threads.json");
+const memory = new Map<string, Thread>();
+
+function filePath() {
+  if (process.env.VERCEL) return path.join("/tmp", "mirror-threads.json");
+  return path.join(process.cwd(), "data", "threads.json");
+}
+
+export function asThread(value: unknown): Thread | null {
+  if (!value || typeof value !== "object") return null;
+  const thread = value as Thread;
+  if (typeof thread.id !== "string" || typeof thread.slug !== "string") return null;
+  if (!thread.state || typeof thread.state.trust !== "number") return null;
+  if (!Array.isArray(thread.messages) || !Array.isArray(thread.mirrorMessages)) return null;
+  return thread;
+}
 
 let chain: Promise<void> = Promise.resolve();
 
@@ -32,19 +46,30 @@ export function persistenceMode() {
 }
 
 async function readFileStore(): Promise<Thread[]> {
+  const byId = new Map<string, Thread>();
   try {
-    const raw = await readFile(filePath, "utf8");
+    const raw = await readFile(filePath(), "utf8");
     const parsed = JSON.parse(raw) as { threads?: Thread[] };
-    return Array.isArray(parsed.threads) ? parsed.threads : [];
+    for (const thread of parsed.threads ?? []) byId.set(thread.id, thread);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
-    throw error;
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code !== "ENOENT" && code !== "EACCES" && code !== "EROFS" && code !== "EPERM") throw error;
   }
+  for (const thread of memory.values()) byId.set(thread.id, thread);
+  return [...byId.values()];
 }
 
 async function writeFileStore(threads: Thread[]) {
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, JSON.stringify({ threads }, null, 2), "utf8");
+  for (const thread of threads) memory.set(thread.id, thread);
+  const target = filePath();
+  try {
+    await mkdir(path.dirname(target), { recursive: true });
+    await writeFile(target, JSON.stringify({ threads }, null, 2), "utf8");
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === "EACCES" || code === "EROFS" || code === "EPERM") return;
+    throw error;
+  }
 }
 
 async function readSupabase(client: SupabaseClient): Promise<Thread[]> {

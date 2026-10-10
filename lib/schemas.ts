@@ -8,19 +8,23 @@ export const turnBody = z.object({
   threadId: z.uuid(),
   text: z.string().trim().min(1).max(2000),
   mode: z.enum(["talk", "mirror", "repair"]),
+  thread: z.unknown().optional(),
 });
 
 export const threadIdBody = z.object({
   threadId: z.uuid(),
+  thread: z.unknown().optional(),
 });
 
 export const actBody = z.object({
   threadId: z.uuid(),
   act: z.enum(["mirror", "repair", "reflect", "talk"]),
+  thread: z.unknown().optional(),
 });
 
 export const reflectBody = z.object({
   threadId: z.uuid(),
+  thread: z.unknown().optional(),
   answers: z
     .array(
       z.object({

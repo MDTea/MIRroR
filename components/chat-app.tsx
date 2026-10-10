@@ -16,6 +16,26 @@ const acts = [
   { id: "repair", label: "Repair" },
 ] as const;
 
+const savedKey = "mirror-threads";
+
+function readSaved(): Thread[] {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(savedKey) ?? "") as { threads?: Thread[] };
+    return Array.isArray(parsed.threads) ? parsed.threads : [];
+  } catch {
+    return [];
+  }
+}
+
+function remember(thread: Thread) {
+  try {
+    const next = [thread, ...readSaved().filter((item) => item.id !== thread.id)].slice(0, 24);
+    localStorage.setItem(savedKey, JSON.stringify({ threads: next }));
+  } catch {
+    // The chat still works for this visit if the browser blocks storage.
+  }
+}
+
 export function ChatApp() {
   const [threads, setThreads] = useState<Thread[]>([]);
   const [slug, setSlug] = useState<string | null>(null);
@@ -32,9 +52,17 @@ export function ChatApp() {
   useEffect(() => {
     let ignore = false;
     async function load() {
-      const response = await fetch("/api/threads");
-      const data = (await response.json()) as { threads?: Thread[] };
-      if (!ignore) setThreads(data.threads ?? []);
+      const local = readSaved();
+      try {
+        const response = await fetch("/api/threads");
+        const data = (await response.json()) as { threads?: Thread[] };
+        const remote = data.threads ?? [];
+        const byId = new Map(local.map((item) => [item.id, item]));
+        for (const item of remote) byId.set(item.id, item);
+        if (!ignore) setThreads([...byId.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)));
+      } catch {
+        if (!ignore) setThreads(local);
+      }
     }
     void load();
     return () => {
@@ -61,6 +89,7 @@ export function ChatApp() {
     setError("");
     try {
       const data = await task();
+      remember(data.thread);
       setThread(data.thread);
       setBoop((value) => value + 1);
       if (data.thread.shards.length > previous) {
@@ -88,9 +117,12 @@ export function ChatApp() {
     setBusy(true);
     try {
       const data = await postJson<{ thread: Thread }>("/api/threads", { slug: nextSlug });
+      remember(data.thread);
       setThread(data.thread);
       setNotes({});
     } catch (openError) {
+      setSlug(null);
+      setThread(null);
       setError(openError instanceof Error ? openError.message : "Could not start the chat.");
     } finally {
       setBusy(false);
@@ -111,6 +143,7 @@ export function ChatApp() {
         await run(() =>
           postJson("/api/reflect", {
             threadId: thread.id,
+            thread,
             answers: thread.reflection.map((item) => ({ id: item.id, answer: nextNotes[item.id] ?? "" })),
           }),
         );
@@ -120,7 +153,7 @@ export function ChatApp() {
     }
 
     const mode = thread.act === "mirror" ? "mirror" : thread.act === "repair" ? "repair" : "talk";
-    await run(() => postJson("/api/turn", { threadId: thread.id, text, mode }));
+    await run(() => postJson("/api/turn", { threadId: thread.id, text, mode, thread }));
     box.current?.focus();
   }
 
@@ -159,8 +192,13 @@ export function ChatApp() {
 
   if (!thread) {
     return (
-      <main className="grid h-full place-items-center">
-        <p className="text-sm text-muted-foreground">Opening the chat…</p>
+      <main className="grid h-full place-items-center gap-3 px-6 text-center">
+        <p className="text-sm text-muted-foreground">{error || "Opening the chat…"}</p>
+        {error ? (
+          <Button type="button" variant="outline" onClick={() => { setSlug(null); setError(""); }}>
+            Back to chats
+          </Button>
+        ) : null}
       </main>
     );
   }
@@ -243,18 +281,18 @@ export function ChatApp() {
       {error ? <p className="mt-2 text-sm text-destructive">{error}</p> : null}
 
       <div className="mt-3 flex flex-wrap gap-2">
-        <Button type="button" size="sm" variant="outline" disabled={said < 2 || busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "mirror" }))}>
+        <Button type="button" size="sm" variant="outline" disabled={said < 2 || busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "mirror", thread }))}>
           Switch perspective
         </Button>
         {mirror ? (
-          <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "talk" }))}>
+          <Button type="button" size="sm" variant="outline" disabled={busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "talk", thread }))}>
             Back to my chair
           </Button>
         ) : null}
-        <Button type="button" size="sm" variant="outline" disabled={said < 1 || busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "reflect" }))}>
+        <Button type="button" size="sm" variant="outline" disabled={said < 1 || busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "reflect", thread }))}>
           Ask me what I assumed
         </Button>
-        <Button type="button" size="sm" variant="outline" disabled={!thread.actsCompleted.includes("reflect") || busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "repair" }))}>
+        <Button type="button" size="sm" variant="outline" disabled={!thread.actsCompleted.includes("reflect") || busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "repair", thread }))}>
           Come back and repair
         </Button>
         <Button type="button" size="sm" variant="ghost" disabled={busy} onClick={() => void openChat(scene.slug)}>

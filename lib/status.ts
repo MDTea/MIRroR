@@ -15,7 +15,12 @@ export async function postJson<T>(url: string, body: unknown): Promise<T> {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const data = (await response.json()) as T & { error?: string };
+  let data: T & { error?: string };
+  try {
+    data = (await response.json()) as T & { error?: string };
+  } catch {
+    throw new Error("The chat could not start. Try that person again.");
+  }
   if (!response.ok) {
     throw new Error(data.error || "The rehearsal could not do that.");
   }

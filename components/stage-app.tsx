@@ -129,7 +129,7 @@ export function StageApp({ slug }: { slug: string }) {
     const text = draft.trim();
     const mode = thread.act === "mirror" ? "mirror" : thread.act === "repair" ? "repair" : "talk";
     setDraft("");
-    await run(() => postJson("/api/turn", { threadId: thread.id, text, mode }));
+    await run(() => postJson("/api/turn", { threadId: thread.id, text, mode, thread }));
     box.current?.focus();
   }
 
@@ -213,18 +213,18 @@ export function StageApp({ slug }: { slug: string }) {
                 {thread.voice === "live" ? "Improvising" : "House script"}
               </span>
               <div className="ml-auto flex flex-wrap gap-2">
-                <Button type="button" size="sm" variant={thread.act === "reflect" ? "outline" : "stage"} disabled={said < 2 || busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "mirror" }))}>
+                <Button type="button" size="sm" variant={thread.act === "reflect" ? "outline" : "stage"} disabled={said < 2 || busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "mirror", thread }))}>
                   Switch perspective
                 </Button>
                 {thread.act === "mirror" ? (
-                  <Button type="button" size="sm" variant="stage" disabled={busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "talk" }))}>
+                  <Button type="button" size="sm" variant="stage" disabled={busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "talk", thread }))}>
                     Return to your chair
                   </Button>
                 ) : null}
-                <Button type="button" size="sm" variant={thread.act === "reflect" ? "outline" : "stage"} disabled={said < 1 || busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "reflect" }))}>
+                <Button type="button" size="sm" variant={thread.act === "reflect" ? "outline" : "stage"} disabled={said < 1 || busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "reflect", thread }))}>
                   Notes
                 </Button>
-                <Button type="button" size="sm" variant={thread.act === "reflect" ? "default" : "stage"} disabled={!thread.actsCompleted.includes("reflect") || busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "repair" }))}>
+                <Button type="button" size="sm" variant={thread.act === "reflect" ? "default" : "stage"} disabled={!thread.actsCompleted.includes("reflect") || busy} onClick={() => void run(() => postJson("/api/act", { threadId: thread.id, act: "repair", thread }))}>
                   Repair
                 </Button>
               </div>
@@ -263,6 +263,7 @@ export function StageApp({ slug }: { slug: string }) {
                   void run(() =>
                     postJson("/api/reflect", {
                       threadId: thread.id,
+                      thread,
                       answers: thread.reflection.map((item) => ({ id: item.id, answer: notes[item.id] ?? "" })),
                     }),
                   );
@@ -336,7 +337,7 @@ export function StageApp({ slug }: { slug: string }) {
                     {busy ? "The room takes that in…" : "Say it"}
                   </Button>
                   {thread.act !== "mirror" ? (
-                    <Button type="button" variant="stage" disabled={busy} onClick={() => void run(() => postJson("/api/pause", { threadId: thread.id }))}>
+                    <Button type="button" variant="stage" disabled={busy} onClick={() => void run(() => postJson("/api/pause", { threadId: thread.id, thread }))}>
                       Hold a beat
                     </Button>
                   ) : null}

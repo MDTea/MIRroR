@@ -5,7 +5,7 @@ import { readJson, threadIdBody } from "@/lib/schemas";
 export async function POST(request: Request) {
   try {
     const body = await readJson(request, threadIdBody);
-    const thread = await holdBeat(body.threadId);
+    const thread = await holdBeat(body.threadId, body.thread);
     return Response.json({ thread });
   } catch (error) {
     return fail(error);

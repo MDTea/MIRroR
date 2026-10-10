@@ -19,7 +19,7 @@ import { characterSystem, mirrorSystem, sanitizeLine } from "@/lib/prompts";
 import { getScene } from "@/lib/scenes";
 import { getScript, repairOpening, scriptedLine } from "@/lib/scripts";
 import { HttpError } from "@/lib/schemas";
-import { createThread as persistThread, getThread, listThreads, saveThread } from "@/lib/store";
+import { asThread, createThread as persistThread, getThread, listThreads, saveThread } from "@/lib/store";
 import type { Act, Message, Thread, Voice } from "@/lib/types";
 
 function now() {
@@ -67,6 +67,15 @@ export async function listShowings() {
   return listThreads();
 }
 
+async function takeThread(id: string, snapshot: unknown) {
+  const stored = await getThread(id);
+  if (stored) return stored;
+  const carried = asThread(snapshot);
+  if (!carried || carried.id !== id) return null;
+  if (!getScene(carried.slug) || !getScript(carried.slug)) return null;
+  return carried;
+}
+
 export async function readShowing(id: string) {
   const thread = await getThread(id);
   if (!thread) throw new HttpError("That showing could not be found.", 404);
@@ -101,8 +110,8 @@ export async function openShowing(slug: string) {
   return persistThread(thread);
 }
 
-export async function speak(threadId: string, text: string, mode: "talk" | "mirror" | "repair") {
-  const thread = await getThread(threadId);
+export async function speak(threadId: string, text: string, mode: "talk" | "mirror" | "repair", snapshot?: unknown) {
+  const thread = await takeThread(threadId, snapshot);
   if (!thread) throw new HttpError("That showing could not be found.", 404);
   const scene = getScene(thread.slug);
   const script = getScript(thread.slug);
@@ -217,8 +226,8 @@ export async function speak(threadId: string, text: string, mode: "talk" | "mirr
   return saveThread(thread);
 }
 
-export async function holdBeat(threadId: string) {
-  const thread = await getThread(threadId);
+export async function holdBeat(threadId: string, snapshot?: unknown) {
+  const thread = await takeThread(threadId, snapshot);
   if (!thread) throw new HttpError("That showing could not be found.", 404);
   if (thread.act === "mirror") throw new HttpError("A beat belongs to the original chairs.");
   if (thread.stalled) throw new HttpError("The scene has already stopped.");
@@ -234,8 +243,8 @@ export async function holdBeat(threadId: string) {
   return saveThread(thread);
 }
 
-export async function changeAct(threadId: string, act: "mirror" | "repair" | "reflect" | "talk") {
-  const thread = await getThread(threadId);
+export async function changeAct(threadId: string, act: "mirror" | "repair" | "reflect" | "talk", snapshot?: unknown) {
+  const thread = await takeThread(threadId, snapshot);
   if (!thread) throw new HttpError("That showing could not be found.", 404);
   const scene = getScene(thread.slug);
   const script = getScript(thread.slug);
@@ -301,8 +310,9 @@ export async function changeAct(threadId: string, act: "mirror" | "repair" | "re
 export async function fileNotes(
   threadId: string,
   answers: { id: string; answer: string }[],
+  snapshot?: unknown,
 ) {
-  const thread = await getThread(threadId);
+  const thread = await takeThread(threadId, snapshot);
   if (!thread) throw new HttpError("That showing could not be found.", 404);
   if (thread.reflection.length === 0) {
     throw new HttpError("Open the notes before you file them.");
