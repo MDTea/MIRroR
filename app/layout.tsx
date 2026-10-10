@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Outfit } from "next/font/google";
 import { Suspense } from "react";
+import { Plexus } from "@/components/plexus";
 import { SiteHeader } from "@/components/site-header";
 import "./globals.css";
 
@@ -18,8 +19,8 @@ const sans = Outfit({
 
 export const metadata: Metadata = {
   title: {
-    default: "MIRROR — Practice being human",
-    template: "%s · MIRROR",
+    default: "MIRRIAM — Practice being human",
+    template: "%s · MIRRIAM",
   },
   description:
     "A social simulator where you practice difficult conversations, hear your own words from the other chair, and come back to repair what went wrong.",
@@ -32,10 +33,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <a className="skip-link" href="#content">
           Skip to content
         </a>
+        <Plexus />
         <Suspense fallback={<div className="h-16 border-b border-border" />}>
           <SiteHeader />
         </Suspense>
-        <div id="content" className="min-h-0 flex-1">
+        <div id="content" className="relative z-10 min-h-0 flex-1">
           {children}
         </div>
       </body>

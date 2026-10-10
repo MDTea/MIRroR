@@ -11,6 +11,15 @@ export const turnBody = z.object({
   thread: z.unknown().optional(),
 });
 
+export const customBody = z
+  .object({
+    problem: z.string().trim().max(2000).optional(),
+    scenario: z.unknown().optional(),
+  })
+  .refine((body) => Boolean(body.scenario) || (body.problem?.length ?? 0) >= 12, {
+    message: "Tell me a little more about the situation, at least a sentence.",
+  });
+
 export const threadIdBody = z.object({
   threadId: z.uuid(),
   thread: z.unknown().optional(),

@@ -266,33 +266,6 @@ export function getScript(slug: string) {
   return scripts.find((script) => script.slug === slug);
 }
 
-const sequels: Record<string, string[]> = {
-  "empty-slide": [
-    "Midnight is a real time. I can start the method slides. I can't promise they'll be good if I start from zero. Which three do you mean?",
-    "You've said what you need. I still haven't told you why the week went missing. Do you want that, or only the file?",
-  ],
-  "the-joke": [
-    "Saying it was a joke again doesn't put the message back. Who else is still in that chat?",
-    "I heard you. I'm asking what you are going to do, not whether you feel bad.",
-  ],
-  "office-hours": [
-    "A grade is a number. I'm asking about the claim. Which sentence are you willing to defend?",
-    "You can want the grade and still answer the question. What did the source actually say?",
-  ],
-  unfinished: [
-    "The page is already in the portfolio. Telling me it was ours doesn't take it down. What do you want me to do with it?",
-    "I don't want to lose you over a layout. I also don't want to pretend I asked. What would make this fair?",
-  ],
-  "after-the-client": [
-    "I corrected you in the room. That part stands. What do you want the next meeting to sound like?",
-    "If this is about how I said it, say that. If it's about the fact, we should not blur those.",
-  ],
-  "quiet-kitchen": [
-    "Finals can be quiet. Being avoided is different. Which one was this week?",
-    "I can come back to the table. I need to know you want me there, not just the dishes done.",
-  ],
-};
-
 export function scriptedLine(
   script: Script,
   args: {
@@ -302,13 +275,14 @@ export function scriptedLine(
     repair: boolean;
     stalled: boolean;
     prior?: string[];
+    userText?: string;
   },
 ) {
   if (args.stalled) return script.stallLine;
   if (args.justRevealed) return ask(script, script.revealLine);
   const bank = script.bank;
   const chosen = pick(script, args, bank);
-  return fresh(script, chosen, args.prior ?? []);
+  return fresh(script, chosen, args.prior ?? [], args.userText ?? "");
 }
 
 function pick(
@@ -336,11 +310,13 @@ function pick(
   return bank.defaultLine;
 }
 
-function fresh(script: Script, line: string, prior: string[]) {
+function fresh(script: Script, line: string, prior: string[], userText: string) {
   const spoken = ask(script, line);
   if (!prior.includes(spoken)) return spoken;
-  const next = (sequels[script.slug] ?? []).map((item) => ask(script, item)).find((item) => !prior.includes(item));
-  return next ?? spoken;
+  const heard = userText.replace(/\s+/g, " ").trim();
+  if (!heard) return spoken;
+  const clip = heard.length > 160 ? `${heard.slice(0, 157).trim()}…` : heard;
+  return `I hear you. “${clip}” Let's stay on that, and talk about what we can actually do next.`;
 }
 
 const nudges: Record<string, string> = {
@@ -354,6 +330,7 @@ const nudges: Record<string, string> = {
 
 function ask(script: Script, line: string) {
   if (line.includes("?")) return line;
+  if (/\b(say|tell me|ask me|what do you|what you)\b/i.test(line)) return line;
   const nudge = nudges[script.slug];
   if (!nudge) return line;
   return `${line.replace(/\s+$/, "")} ${nudge}`;

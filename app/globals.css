@@ -189,6 +189,22 @@ body {
   animation: mirror-sweep 0.55s ease;
 }
 
+@keyframes nudge-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+.nudge-float {
+  animation:
+    bubble-in 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both,
+    nudge-float 2.2s ease-in-out 0.42s infinite;
+}
+
 .playbill {
   background-image: linear-gradient(
     90deg,

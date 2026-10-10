@@ -50,7 +50,7 @@ export function HallBoard() {
             Practice being human.
           </h1>
           <p className="mt-5 max-w-xl text-lg leading-8 text-foreground/80">
-            MIRROR is a social simulator for conversations that do not automatically go your way.
+            MIRRIAM is a social simulator for conversations that do not automatically go your way.
             Someone across from you has a goal, a boundary, and a memory. You can sit in their chair.
             If it goes badly, you can come back and repair it.
           </p>
@@ -85,6 +85,7 @@ export function HallBoard() {
             {scenes.map((item) => {
               const thread = threads.find((entry) => entry.slug === item.slug);
               const selected = item.slug === scene.slug;
+              const status = showingLabel(thread);
               return (
                 <li key={item.slug}>
                   <button
@@ -103,7 +104,7 @@ export function HallBoard() {
                       <span className="block font-medium">{item.title}</span>
                       <span className="block truncate text-sm text-muted-foreground">{item.character.name}</span>
                     </span>
-                    <Badge>{showingLabel(thread)}</Badge>
+                    {status ? <Badge>{status}</Badge> : null}
                   </button>
                 </li>
               );
@@ -136,7 +137,7 @@ export function HallBoard() {
                 Step into the scene
               </Link>
             </Button>
-            <p className="text-sm text-stage-foreground/70">{showingLabel(latest)}</p>
+            {showingLabel(latest) ? <p className="text-sm text-stage-foreground/70">{showingLabel(latest)}</p> : null}
           </div>
         </article>
       </section>

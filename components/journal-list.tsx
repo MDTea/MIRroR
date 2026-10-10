@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { lampWords } from "@/lib/engine";
 import { getScene } from "@/lib/scenes";
 import { showingLabel } from "@/lib/status";
 import type { Thread } from "@/lib/types";
@@ -51,6 +50,7 @@ export function JournalList() {
     <ul className="grid gap-4">
       {threads.map((thread) => {
         const scene = getScene(thread.slug);
+        const status = showingLabel(thread);
         const when = new Intl.DateTimeFormat("en", {
           month: "short",
           day: "numeric",
@@ -65,15 +65,8 @@ export function JournalList() {
                 <h2 className="mt-1 font-display text-3xl">{scene?.title ?? thread.slug}</h2>
                 <p className="text-sm text-muted-foreground">{scene?.character.name}</p>
               </div>
-              <Badge>{showingLabel(thread)}</Badge>
+              {status ? <Badge>{status}</Badge> : null}
             </div>
-            <ul className="mt-4 flex flex-wrap gap-2">
-              {lampWords(thread.state).map((lamp) => (
-                <li key={lamp.id} className="rounded-full bg-secondary px-3 py-1 text-xs">
-                  {lamp.label}: {lamp.word}
-                </li>
-              ))}
-            </ul>
             {thread.turningPoint ? (
               <blockquote className="mt-4 border-l-2 border-accent pl-4 text-sm leading-6">
                 {thread.turningPoint.note} “{thread.turningPoint.quote}”

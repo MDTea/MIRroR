@@ -14,13 +14,15 @@ import {
   styleProfile,
   step,
 } from "@/lib/engine";
+import { asCustom, buildScenario, customScript } from "@/lib/custom";
+import { buildFeedback, scoreSignals } from "@/lib/feedback";
 import { getClient, modelName } from "@/lib/openai";
 import { characterSystem, mirrorSystem, sanitizeLine } from "@/lib/prompts";
 import { getScene } from "@/lib/scenes";
-import { getScript, repairOpening, scriptedLine } from "@/lib/scripts";
+import { getScript, repairOpening, scriptedLine, type Script } from "@/lib/scripts";
 import { HttpError } from "@/lib/schemas";
 import { asThread, createThread as persistThread, getThread, listThreads, saveThread } from "@/lib/store";
-import type { Act, Message, Thread, Voice } from "@/lib/types";
+import type { Act, CustomScene, Message, Thread, Voice } from "@/lib/types";
 
 function now() {
   return new Date().toISOString();
@@ -35,7 +37,16 @@ function message(partial: Omit<Message, "id" | "at"> & { id?: string }): Message
     signals: partial.signals,
     delta: partial.delta,
     voice: partial.voice,
+    points: partial.points,
   };
+}
+
+function sceneFor(thread: Thread) {
+  return thread.custom?.scene ?? getScene(thread.slug);
+}
+
+function scriptFor(thread: Thread) {
+  return thread.custom ? customScript(thread.custom) : getScript(thread.slug);
 }
 
 function mark(thread: Thread, act: Act) {
@@ -47,7 +58,7 @@ async function complete(system: string, history: { role: "user" | "assistant"; c
   if (!client) return null;
   const response = await client.chat.completions.create({
     model: modelName(),
-    temperature: 0.8,
+    temperature: 0.7,
     messages: [{ role: "system", content: system }, ...history],
   });
   return sanitizeLine(response.choices[0]?.message?.content ?? "");
@@ -72,7 +83,8 @@ async function takeThread(id: string, snapshot: unknown) {
   if (stored) return stored;
   const carried = asThread(snapshot);
   if (!carried || carried.id !== id) return null;
-  if (!getScene(carried.slug) || !getScript(carried.slug)) return null;
+  if (carried.custom && !asCustom(carried.custom)) return null;
+  if (!sceneFor(carried) || !scriptFor(carried)) return null;
   return carried;
 }
 
@@ -86,6 +98,17 @@ export async function openShowing(slug: string) {
   const scene = getScene(slug);
   const script = getScript(slug);
   if (!scene || !script) throw new HttpError("That scene is not on the callboard.", 404);
+  return startThread(slug, script);
+}
+
+export async function openCustom(problem: string | undefined, scenario: unknown) {
+  const reused = asCustom(scenario);
+  if (!reused && !problem) throw new HttpError("Describe the situation first.");
+  const custom = reused ?? (await buildScenario(problem ?? ""));
+  return startThread(custom.scene.slug, customScript(custom), custom);
+}
+
+async function startThread(slug: string, script: Script, custom?: CustomScene) {
   const thread: Thread = {
     id: crypto.randomUUID(),
     slug,
@@ -106,6 +129,9 @@ export async function openShowing(slug: string) {
     voice: "house",
     createdAt: now(),
     updatedAt: now(),
+    points: 0,
+    feedback: null,
+    custom,
   };
   try {
     return await persistThread(thread);
@@ -118,8 +144,8 @@ export async function openShowing(slug: string) {
 export async function speak(threadId: string, text: string, mode: "talk" | "mirror" | "repair", snapshot?: unknown) {
   const thread = await takeThread(threadId, snapshot);
   if (!thread) throw new HttpError("That showing could not be found.", 404);
-  const scene = getScene(thread.slug);
-  const script = getScript(thread.slug);
+  const scene = sceneFor(thread);
+  const script = scriptFor(thread);
   if (!scene || !script) throw new HttpError("That scene is missing its script.", 500);
 
   if (mode === "mirror") {
@@ -177,7 +203,9 @@ export async function speak(threadId: string, text: string, mode: "talk" | "mirr
   if (charge(signals) >= charge(detectSignals(thread.sharpest, script.keywords)) && text.trim()) {
     thread.sharpest = text.trim();
   }
-  thread.messages.push(message({ role: "user", text, signals, delta: result.delta }));
+  const points = scoreSignals(signals);
+  thread.points = (thread.points ?? 0) + points;
+  thread.messages.push(message({ role: "user", text, signals, delta: result.delta, points }));
   if (result.justRevealed) {
     thread.revealed = true;
     thread.events.push({
@@ -216,6 +244,7 @@ export async function speak(threadId: string, text: string, mode: "talk" | "mirr
       repair: mode === "repair",
       stalled: thread.stalled,
       prior: thread.messages.filter((item) => item.role === "character").map((item) => item.text),
+      userText: text,
     });
   } else {
     voice = "live";
@@ -251,8 +280,8 @@ export async function holdBeat(threadId: string, snapshot?: unknown) {
 export async function changeAct(threadId: string, act: "mirror" | "repair" | "reflect" | "talk", snapshot?: unknown) {
   const thread = await takeThread(threadId, snapshot);
   if (!thread) throw new HttpError("That showing could not be found.", 404);
-  const scene = getScene(thread.slug);
-  const script = getScript(thread.slug);
+  const scene = sceneFor(thread);
+  const script = scriptFor(thread);
   if (!scene || !script) throw new HttpError("That scene is missing its script.", 500);
   const userLines = thread.messages.filter((item) => item.role === "user");
 
@@ -309,6 +338,20 @@ export async function changeAct(threadId: string, act: "mirror" | "repair" | "re
       voice: "house",
     }),
   );
+  return saveThread(thread);
+}
+
+export async function giveFeedback(threadId: string, snapshot?: unknown) {
+  const thread = await takeThread(threadId, snapshot);
+  if (!thread) throw new HttpError("That showing could not be found.", 404);
+  const scene = sceneFor(thread);
+  if (!scene) throw new HttpError("That scene is missing.", 500);
+  if (!thread.messages.some((item) => item.role === "user")) {
+    throw new HttpError("Say something first, then ask for feedback.");
+  }
+  if (!thread.feedback) thread.feedback = await buildFeedback(thread, scene);
+  thread.act = "feedback";
+  mark(thread, "feedback");
   return saveThread(thread);
 }
 

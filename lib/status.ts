@@ -1,12 +1,12 @@
 import type { Thread } from "@/lib/types";
 
 export function showingLabel(thread?: Thread) {
-  if (!thread) return "Unrehearsed";
+  if (!thread) return "";
+  if (thread.actsCompleted.includes("feedback")) return "Completed";
   if (thread.actsCompleted.includes("repair")) return "Second showing";
   if (thread.actsCompleted.includes("reflect")) return "Notes filed";
-  if (thread.shards.includes(thread.slug)) return "Mirrored";
-  if (thread.messages.some((message) => message.role === "user")) return "In the room";
-  return "Curtain up";
+  if (thread.shards.includes(thread.slug)) return "Switched chairs";
+  return "";
 }
 
 export async function postJson<T>(url: string, body: unknown): Promise<T> {

@@ -36,7 +36,7 @@ export type Expression =
   | "steady"
   | "firm";
 
-export type Act = "talk" | "mirror" | "reflect" | "repair";
+export type Act = "talk" | "mirror" | "reflect" | "repair" | "feedback";
 
 export type Voice = "live" | "house";
 
@@ -48,6 +48,35 @@ export type Message = {
   signals?: Signals;
   delta?: Partial<RelationshipState>;
   voice?: Voice;
+  points?: number;
+};
+
+export type ResponseFeedback = {
+  messageId: string;
+  text: string;
+  reply: string;
+  pros: string[];
+  cons: string[];
+  tryInstead: string;
+};
+
+export type Feedback = {
+  summary: string;
+  pros: string[];
+  cons: string[];
+  responses: ResponseFeedback[];
+  createdAt: string;
+};
+
+export type CustomScene = {
+  problem: string;
+  scene: ScenePublic;
+  voice: string;
+  opening: string;
+  hidden: string;
+  revealLine: string;
+  afterReveal: string;
+  keywords: string[];
 };
 
 export type SceneEvent = {
@@ -88,6 +117,9 @@ export type Thread = {
   voice: Voice;
   createdAt: string;
   updatedAt: string;
+  points?: number;
+  feedback?: Feedback | null;
+  custom?: CustomScene;
 };
 
 export type Cue = {

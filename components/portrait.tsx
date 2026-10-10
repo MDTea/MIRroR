@@ -14,6 +14,13 @@ const looks: Record<
   "quiet-kitchen": { skin: "#a56b45", shade: "#8a5534", hair: "#1f6f66", cloth: "#f3e6d4", style: "hijab" },
 };
 
+function lookFor(slug: string) {
+  const all = Object.values(looks);
+  let hash = 0;
+  for (const char of slug) hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  return all[hash % all.length];
+}
+
 const brows: Record<Expression, string> = {
   guarded: "M58 86 Q78 92 96 84 M108 84 Q126 92 146 86",
   bristling: "M56 90 Q78 74 98 86 M106 86 Q128 74 148 90",
@@ -45,7 +52,7 @@ export function Portrait({
   mirrored?: boolean;
   className?: string;
 }) {
-  const look = looks[slug] ?? looks["empty-slide"];
+  const look = looks[slug] ?? lookFor(slug);
   return (
     <svg
       viewBox="0 0 200 230"

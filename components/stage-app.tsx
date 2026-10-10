@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
-import { expressionFor, lampWords, sceneCanRest } from "@/lib/engine";
+import { expressionFor, sceneCanRest } from "@/lib/engine";
 import { getScene } from "@/lib/scenes";
 import { postJson } from "@/lib/status";
 import type { Thread } from "@/lib/types";
@@ -87,7 +87,6 @@ export function StageApp({ slug }: { slug: string }) {
 
   const said = thread?.messages.filter((message) => message.role === "user").length ?? 0;
   const expression = thread ? expressionFor(thread.state, thread.stalled) : "guarded";
-  const lamps = thread ? lampWords(thread.state) : [];
   const resting = thread ? sceneCanRest(thread.state) : false;
   const notesReady = useMemo(
     () => Boolean(thread && thread.reflection.length === 3 && thread.reflection.every((item) => (notes[item.id] ?? "").trim())),
@@ -148,23 +147,6 @@ export function StageApp({ slug }: { slug: string }) {
         </p>
         <p className="mt-3 text-sm leading-6">{scene.character.aim}</p>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">{scene.character.boundary}</p>
-        {thread && thread.act !== "mirror" ? (
-          <div className="mt-4">
-            <h2 className="text-xs uppercase tracking-[0.16em] text-muted-foreground">What you can&apos;t fully see</h2>
-            <ul className="mt-2 grid grid-cols-2 gap-2">
-              {lamps.map((lamp) => (
-                <li key={lamp.id} className="rounded-2xl bg-secondary px-3 py-2">
-                  <span className="block text-[0.65rem] uppercase tracking-wide text-muted-foreground">{lamp.label}</span>
-                  <span className="font-display text-lg">{lamp.word}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : thread?.act === "mirror" ? (
-          <p className="mt-4 text-sm leading-6 text-muted-foreground">The gauges stay in the room you left. This chair does not come with a score.</p>
-        ) : (
-          <p className="mt-4 text-sm leading-6 text-muted-foreground">Once the curtain is up, the room is described in words. None of them is a score.</p>
-        )}
       </aside>
 
       <section

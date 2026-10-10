@@ -133,6 +133,7 @@ export function detectSignals(text: string, keywords: string[]): Signals {
     hit(/\bi was hurt\b/i) ||
     hit(/\bi(?:'| a)?m asking\b/i) ||
     hit(/\bwhat i want\b/i) ||
+    hit(/\bi (just )?want\b/i) ||
     hit(/\bi want us\b/i) ||
     hit(/\bcan we figure\b/i) ||
     hit(/\bi have to be honest\b/i) ||
